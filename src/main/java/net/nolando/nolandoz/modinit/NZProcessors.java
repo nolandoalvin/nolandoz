@@ -10,14 +10,15 @@ import net.minecraftforge.registries.RegistryObject;
 import net.nolando.nolandoz.NolandoZ;
 import net.nolando.nolandoz.world.processors.ItemFrameLootProcessor;
 
-public class NZProcessors {
+public final class NZProcessors {
+
     public static final DeferredRegister<StructureProcessorType<?>> PROCESSORS =
             DeferredRegister.create(Registries.STRUCTURE_PROCESSOR, NolandoZ.MOD_ID);
 
     public static final RegistryObject<StructureProcessorType<ItemFrameLootProcessor>> ITEM_FRAME_LOOT_PROCESSOR =
             PROCESSORS.register("itemframe_loot", () -> () -> ItemFrameLootProcessor.CODEC);
 
-    public static void register() {
-        PROCESSORS.register(FMLJavaModLoadingContext.get().getModEventBus());
+    //public static void register() {
+        //PROCESSORS.register(FMLJavaModLoadingContext.get().getModEventBus());
     }
 }

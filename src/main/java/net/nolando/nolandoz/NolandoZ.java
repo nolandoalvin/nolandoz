@@ -29,7 +29,7 @@ public class NolandoZ {
         modEventBus.addListener(this::commonSetup);
         MinecraftForge.EVENT_BUS.register(this);
         modEventBus.addListener(this::addCreative);
-        NZProcessors.register();
+        NZProcessors.STRUCTURE_PROCESSOR.register();
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
