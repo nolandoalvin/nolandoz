@@ -1,57 +1,47 @@
 package net.nolando.nolandoz;
 
-import com.mojang.logging.LogUtils;
-import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
-import net.minecraftforge.event.server.ServerStartingEvent;
+import net.minecraftforge.event.AddReloadListenerEvent;
+import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import net.nolando.nolandoz.modinit.NZProcessors;
-import org.slf4j.Logger;
 
-// The value here should match an entry in the META-INF/mods.toml file
-@Mod(NolandoZ.MOD_ID)
+@Mod(NolandoZ.MODID)
 public class NolandoZ {
-    // Define mod id in a common place for everything to reference
-    public static final String MOD_ID = "nolandoz";
-    // Directly reference a slf4j logger
-    private static final Logger LOGGER = LogUtils.getLogger();
+    public static final String MODID = "nolandoz";
+    public static final Logger LOGGER = LogManager.getLogger();
 
+    public NolandoZ() {
 
-    public NolandoZ(FMLJavaModLoadingContext context)
-    {
-        IEventBus modEventBus = context.getModEventBus();
-        modEventBus.addListener(this::commonSetup);
-        MinecraftForge.EVENT_BUS.register(this);
-        modEventBus.addListener(this::addCreative);
-        NZProcessors.STRUCTURE_PROCESSOR.register();
+        IEventBus forgeBus = MinecraftForge.EVENT_BUS;
+        IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
+
+        // Register processors and listeners
+        NZProcessors.register(modBus);
+        modBus.addListener(this::setup);
+        forgeBus.addListener(this::onDatapackReload);
+        forgeBus.addListener(this::onServerStarted);
     }
 
-    private void commonSetup(final FMLCommonSetupEvent event) {
-
+    private void setup(final FMLCommonSetupEvent event) {
+        event.enqueueWork(() -> {
+            LOGGER.info("[{}] Common setup complete.", MODID);
+        });
     }
 
-    // Add the example block item to the building blocks tab
-    private void addCreative(BuildCreativeModeTabContentsEvent event) {
-
+    private void onDatapackReload(final AddReloadListenerEvent event) {
+        // If you have custom reload listeners, register here
+        // e.g., event.addListener(MyManager::reload);
     }
 
-    @SubscribeEvent
-    public void onServerStarting(ServerStartingEvent event) {
-
-    }
-
-    // You can use EventBusSubscriber to automatically register all static methods in the class annotated with @SubscribeEvent
-    @Mod.EventBusSubscriber(modid = MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
-    public static class ClientModEvents
-    {
-        @SubscribeEvent
-        public static void onClientSetup(FMLClientSetupEvent event) {
-        }
+    private void onServerStarted(final ServerStartedEvent event) {
+        LOGGER.info("[{}] Server started, mod ready!", MODID);
     }
 }

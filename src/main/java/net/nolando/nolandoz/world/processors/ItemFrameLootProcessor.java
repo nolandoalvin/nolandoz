@@ -1,53 +1,82 @@
 package net.nolando.nolandoz.world.processors;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.util.RandomSource;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorType;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate.StructureEntityInfo;
-import net.nolando.nolandoz.modinit.NZProcessors;
 
 import java.util.List;
+import java.util.Random;
 
 public class ItemFrameLootProcessor extends StructureProcessor {
-    public static final Codec<ItemFrameLootProcessor> CODEC = Codec.unit(ItemFrameLootProcessor::new);
-
-    private static final List<String> GUN_IDS = List.of(
-            "tacz:sks_tactical", "tacz:cz75", "tacz:db_long", "tacz:ak47", "tacz:aug", "tacz:deagle",
-            "tacz:db_short", "tacz:glock_17", "tacz:hk416d", "tacz:hk_g3", "tacz:hk_mp5a5",
-            "tacz:m107", "tacz:m16a1", "tacz:m16a4", "tacz:m1911", "tacz:m249", "tacz:m320",
-            "tacz:m4a1", "tacz:m700", "tacz:m870", "tacz:m95", "tacz:mk14", "tacz:p320", "tacz:p90",
-            "tacz:qbz_95", "tacz:rpg7", "tacz:rpk", "tacz:scar_h", "tacz:scar_l", "tacz:type_81",
-            "tacz:ump45", "tacz:uzi", "tacz:vector45"
+    public static final Codec<ItemFrameLootProcessor> CODEC = RecordCodecBuilder.create(inst ->
+            inst.group(
+                    Codec.STRING.listOf().fieldOf("gun_ids").forGetter(p -> p.gunIds)
+            ).apply(inst, ItemFrameLootProcessor::new)
     );
 
-    @Override
-    public StructureEntityInfo processEntity(ServerLevelAccessor level, BlockPos pos, StructureEntityInfo entityInfo, StructureTemplate.StructureBlockInfo blockInfo, StructureTemplate.StructureBlockInfo blockInfo2, StructurePlacementData placement) {
-        if (entityInfo.entityTag().getString("id").equals(EntityType.ITEM_FRAME.getRegistryName().toString())) {
-            RandomSource random = level.getRandom();
-            String randomGunId = GUN_IDS.get(random.nextInt(GUN_IDS.size()));
+    private final List<String> gunIds;
 
-            CompoundTag gunTag = new CompoundTag();
-            gunTag.putString("GunId", randomGunId);
-
-            CompoundTag itemTag = new CompoundTag();
-            itemTag.putString("id", "tacz:modern_kinetic_gun");
-            itemTag.putByte("Count", (byte) 1);
-            itemTag.put("tag", gunTag);
-
-            entityInfo.entityTag().putBoolean("Invisible", true);
-            entityInfo.entityTag().put("Item", itemTag);
-        }
-        return entityInfo;
+    public ItemFrameLootProcessor(List<String> gunIds) {
+        this.gunIds = gunIds;
     }
 
     @Override
     protected StructureProcessorType<?> getType() {
-        return NZProcessors.ITEM_FRAME_LOOT_PROCESSOR.get();
+        return net.nolando.nolandoz.modinit.NZProcessors.ITEM_FRAME_LOOT.get();
+    }
+
+    @Override
+    public StructureTemplate.StructureBlockInfo processBlock(
+            LevelReader world,
+            BlockPos structurePos,
+            BlockPos blockPos,
+            StructureTemplate.StructureBlockInfo rawBlockInfo,
+            StructureTemplate.StructureBlockInfo transformedBlockInfo,
+            StructurePlaceSettings settings
+    ) {
+        // Leave all blocks unchanged
+        return transformedBlockInfo;
+    }
+
+    @Override
+    public StructureTemplate.StructureEntityInfo processEntity(
+            LevelReader world,
+            BlockPos structurePos,
+            StructureTemplate.StructureEntityInfo rawEntityInfo,
+            StructureTemplate.StructureEntityInfo entityInfo,
+            StructurePlaceSettings settings,
+            StructureTemplate template
+    ) {
+        CompoundTag nbt = entityInfo.nbt;
+        if ("minecraft:item_frame".equals(nbt.getString("id"))) {
+            // Randomly pick a gun ID
+            Random rand = new Random(structurePos.asLong() ^ nbt.hashCode());
+            String selected = gunIds.get(rand.nextInt(gunIds.size()));
+
+            // Build the ItemStack NBT
+            CompoundTag itemTag = new CompoundTag();
+            itemTag.putString("id", "tacz:modern_kinetic_gun");
+            CompoundTag tag = new CompoundTag();
+            tag.putString("GunId", selected);
+            itemTag.put("tag", tag);
+            itemTag.putByte("Count", (byte) 1);
+
+            // Set invisibility and assign the item
+            nbt.putBoolean("Invisible", true);
+            nbt.put("Item", itemTag);
+
+            return new StructureTemplate.StructureEntityInfo(
+                    entityInfo.pos,
+                    entityInfo.blockPos,
+                    nbt
+            );
+        }
+        return entityInfo;
     }
 }
